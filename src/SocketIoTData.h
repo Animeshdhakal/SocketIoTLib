@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SocketIoTData_h
+#define SocketIoTData_h
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -85,3 +86,5 @@ public:
         return buff >= data;
     }
 };
+
+#endif
