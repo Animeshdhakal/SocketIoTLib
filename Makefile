@@ -1,4 +1,4 @@
-ESP_ROOT = /home/animeshdhakal/Desktop/hardware/build/esp8266
+ESP_ROOT = /home/animeshdhakal/Desktop/SocketIoTLib/build/esp8266
 SKETCH = ./src/main.cpp
 MONITOR_SPEED = 115200
 LIBS = ./lib
