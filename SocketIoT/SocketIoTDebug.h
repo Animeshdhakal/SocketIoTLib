@@ -40,25 +40,42 @@ void LOG_TIME()
     Serial.print(SF("] "));
 }
 
-template <typename T>
-void DEBUG_MULTI(T msg)
-{
+#ifdef DEBUG
+
+#define LOG1(msg) \
+    LOG_TIME();   \
     Serial.println(msg);
-}
 
-template <typename T, typename... Args>
-void DEBUG_MULTI(T msg, Args... args)
-{
-    Serial.print(msg);
-    DEBUG_MULTI(args...);
-}
+#define LOG2(msg, msg2) \
+    LOG_TIME();         \
+    Serial.print(msg);  \
+    Serial.println(msg2);
 
-template <typename... Args>
-void DEBUG(Args... args)
-{
-    LOG_TIME();
-    DEBUG_MULTI(args...);
-}
+#define LOG3(msg, msg2, msg3) \
+    LOG_TIME();               \
+    Serial.print(msg);        \
+    Serial.print(msg2);       \
+    Serial.println(msg3);
+
+#define LOG4(msg, msg2, msg3, msg4) \
+    LOG_TIME();                     \
+    Serial.print(msg);              \
+    Serial.print(msg2);             \
+    Serial.print(msg3);             \
+    Serial.println(msg4);
+
+#else
+
+#define LOG1
+
+#define LOG2
+
+#define LOG3
+
+#define LOG4
 
 #endif
+
+#endif
+
 #endif

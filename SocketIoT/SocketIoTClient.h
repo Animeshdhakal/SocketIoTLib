@@ -28,9 +28,10 @@ public:
         this->auth = auth;
         this->host = host;
         this->port = port;
+        LOG4(SF("Connecting to "), host, ":", port);
     }
 
-    void processWrite(SocketIOTData data)
+    void processWrite(SocketIoTData data)
     {
         const uint8_t pin = data.toInt();
         if (++data >= data.end())
@@ -41,6 +42,20 @@ public:
         {
             SocketIoTHandlers[pin](data);
         }
+        else
+        {
+            LOG2(SF("No handler for pin "), pin);
+        }
+    }
+
+    template <typename T>
+    void write(uint8_t pin, T value)
+    {
+        char buff[100];
+        SocketIoTData data(buff, 0, sizeof(buff));
+        data.put(pin);
+        data.put(value);
+        sendMsg(WRITE, data.toString(), data.length());
     }
 
     void processData()
@@ -56,7 +71,7 @@ public:
             client.read((uint8_t *)buff, hdr.msg_len);
             buff[hdr.msg_len] = 0;
 
-            SocketIOTData data(buff, hdr.msg_len);
+            SocketIoTData data(buff, hdr.msg_len);
 
             switch (hdr.msg_type)
             {
@@ -64,18 +79,19 @@ public:
 
                 if (buff[0] - '0' == 1)
                 {
-                    DEBUG("Authenticated");
+                    LOG1(SF("Authenticated"));
                     sendInfo();
                     state = CONNECTED;
+                    socketIoTConnected();
                 }
                 else
                 {
-                    DEBUG("Authentication failed");
+                    LOG1(SF("Authentication failed"));
                     state = AUTH_FAILED;
                 }
                 break;
             case PING:
-                DEBUG("PING");
+                LOG1(SF("PING"));
                 break;
             case WRITE:
                 processWrite(data);
@@ -113,6 +129,11 @@ public:
         return state == CONNECTED;
     }
 
+    void syncWithServer()
+    {
+        sendMsg(SYNC);
+    }
+
     void loop()
     {
         YIELD();
@@ -131,12 +152,13 @@ public:
 
             if (now - last_recv > HEARTBEAT * 1000 * 2)
             {
-                DEBUG("Disconnected from Server");
+                LOG1(SF("Server Disconnected"));
                 state = CONNECTING;
+                socketIoTDisconnected();
             }
             else if (now - last_ping > HEARTBEAT * 1000 && (now - last_recv > HEARTBEAT * 1000 || now - last_send > HEARTBEAT * 1000))
             {
-                DEBUG("Sending PING");
+                LOG1(SF("Sending Ping"));
                 sendMsg(PING);
                 last_ping = now;
             }
@@ -145,7 +167,7 @@ public:
         {
             if (!client.connected() && client.connect(host, port))
             {
-                DEBUG("Connected to Server");
+                LOG1(SF("Connected to Server"));
                 authenticate();
             }
         }

@@ -1,6 +1,8 @@
 #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
 #include <WiFiClientSecure.h>
-#include "SocketIoTClient.h"
+#define DEBUG
+#include <SocketIoTClient.h>
 
 static const char *CERT SPROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -101,6 +103,21 @@ static X509List SocketIoTCert(CERT);
 static WiFiClientSecure client;
 static SocketIoTClient<WiFiClientSecure> socketIoT(client);
 
+SocketIoTConnected()
+{
+    socketIoT.syncWithServer();
+}
+
+SocketIoTDisconnected()
+{
+    Serial.println("SocketIoTDisconnected");
+}
+
+SocketIoTWrite(1)
+{
+    digitalWrite(LED_BUILTIN, data.toInt());
+}
+
 void syncTime()
 {
     configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -120,15 +137,13 @@ void syncTime()
     Serial.print(asctime(&timeinfo));
 }
 
-SocketIoTWrite(1)
-{
-    digitalWrite(LED_BUILTIN, data.toInt());
-}
-
 void setup()
 {
 
     Serial.begin(115200);
+
+    pinMode(LED_BUILTIN, OUTPUT);
+
     WiFi.begin("", "");
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -137,10 +152,6 @@ void setup()
     }
 
     syncTime();
-
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    Serial.println("Connected to WiFi");
 
     client.setTrustAnchors(&SocketIoTCert);
 
