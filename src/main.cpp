@@ -1,7 +1,8 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
 #include <WiFiClientSecure.h>
 #define DEBUG
+#define FIRMWARE_VERSION "1.0.0"
+#define BLUEPRINT_ID "helloanimesh"
 #include <SocketIoTClient.h>
 
 static const char *CERT SPROGMEM = R"EOF(

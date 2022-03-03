@@ -1,6 +1,10 @@
 #ifndef SocketIoTClient_h
 #define SocketIoTClient_h
 
+#if !defined(FIRMWARE_VERSION) && !defined(BLUEPRINT_ID)
+#error "FIRMWARE_VERSION and BLUEPRINT_ID must be defined"
+#endif
+
 #include "SocketIoTData.h"
 #include "SocketIoTDebug.h"
 #include "SocketIoTSpec.h"
@@ -102,7 +106,7 @@ public:
 
     void sendInfo()
     {
-        static const char info[] SPROGMEM = "info\0" InfoParam("hbeat", NumToString(HEARTBEAT)) InfoParam("build", __DATE__ " " __TIME__) "\0";
+        static const char info[] SPROGMEM = "info\0" InfoParam("hbeat", NumToString(HEARTBEAT)) InfoParam("build", __DATE__ " " __TIME__) InfoParam("fv", FIRMWARE_VERSION) InfoParam("bid", BLUEPRINT_ID) "\0";
         size_t actualsize = sizeof(info) - 5 - 2;
         sendMsg(INFO, info + 5, actualsize);
     }

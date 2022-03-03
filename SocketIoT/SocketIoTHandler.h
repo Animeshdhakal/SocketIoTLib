@@ -18,7 +18,7 @@ typedef void (*SocketIoTCallback)(SocketIoTData &data);
 
 static SocketIoTCallback SocketIoTHandlers[20] = {NULL};
 
-uint8_t registerSocketIOTCallback(uint8_t pin, SocketIoTCallback cb)
+static uint8_t registerSocketIOTCallback(uint8_t pin, SocketIoTCallback cb)
 {
     SocketIoTHandlers[pin] = cb;
     return 0;
