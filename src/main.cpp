@@ -1,165 +1,342 @@
 #include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
+#include <ESP8266WebServer.h>
+#include <EEPROM.h>
+#include <ESP8266HTTPUpdateServer.h>
+
+#define FIRMWARE_VERSION "1.0"
+#define BLUEPRINT_ID "Animesh"
 #define DEBUG
-#define FIRMWARE_VERSION "1.0.0"
-#define BLUEPRINT_ID "helloanimesh"
-#include <SocketIoTClient.h>
 
-static const char *CERT SPROGMEM = R"EOF(
------BEGIN CERTIFICATE-----
-MIIFHjCCBAagAwIBAgISBP90FGsov4jmZSrPqVsKxyUaMA0GCSqGSIb3DQEBCwUA
-MDIxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQswCQYDVQQD
-EwJSMzAeFw0yMjAyMTgwOTQ0MTRaFw0yMjA1MTkwOTQ0MTNaMBcxFTATBgNVBAMT
-DHVuaHB1LmNvbS5ucDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAIU2
-qG9z4Pu6duiOwgybCVRGZ4+y2mLjiKKZIm2kdLr8a5L3rvVx8WAVNJZhtOKQCVc9
-IujLLDPoHuohVXFGNklbxIf39YX2mgxfVv9owVivjmY0OlVUr7upVDGc2g+mivk3
-/1ucwKhg5Ez+EjP/Qf5IcpTa8YOcZhBHV/42yJEvT0YP2hhasDn9yF2qGrhfeX7q
-5FRxSOZAX8WYZ4YNzDTDbLZGTJ+O7ALKQNEnIfpRDhQyyhBxp5+9ZbI5yKv3Qiau
-l3zbpSYzoprSDmBXyrHcjU5qF4PkWM2R+ZAOb1xS4vDNoEeGHs/ZOwfxT7J+mxWi
-AwBdPqtn+p35M3ElBrsCAwEAAaOCAkcwggJDMA4GA1UdDwEB/wQEAwIFoDAdBgNV
-HSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDAYDVR0TAQH/BAIwADAdBgNVHQ4E
-FgQU54b0VxrRXRzqyBhkRjnLz9ZfQwgwHwYDVR0jBBgwFoAUFC6zF7dYVsuuUAlA
-5h+vnYsUwsYwVQYIKwYBBQUHAQEESTBHMCEGCCsGAQUFBzABhhVodHRwOi8vcjMu
-by5sZW5jci5vcmcwIgYIKwYBBQUHMAKGFmh0dHA6Ly9yMy5pLmxlbmNyLm9yZy8w
-FwYDVR0RBBAwDoIMdW5ocHUuY29tLm5wMEwGA1UdIARFMEMwCAYGZ4EMAQIBMDcG
-CysGAQQBgt8TAQEBMCgwJgYIKwYBBQUHAgEWGmh0dHA6Ly9jcHMubGV0c2VuY3J5
-cHQub3JnMIIBBAYKKwYBBAHWeQIEAgSB9QSB8gDwAHYA36Veq2iCTx9sre64X04+
-WurNohKkal6OOxLAIERcKnMAAAF/DG6t6AAABAMARzBFAiBbjnIr79uOQLcOv5Go
-D1h4a1l2/MMUMj46d2UFQd4AtAIhAMuMMzbXYZoEBUa4oCKDbdWqseeiCJ0b5RmQ
-VDkTJ+1tAHYAKXm+8J45OSHwVnOfY6V35b5XfZxgCvj5TV0mXCVdx4QAAAF/DG6v
-zAAABAMARzBFAiBev2SS9+9WVpWplQIbafNAioSzsqO9xfBEuO4CnGNH8QIhAL62
-gCWvVeM1UR8d1utyWUhxd2ts178qJLNjtyr7d3ObMA0GCSqGSIb3DQEBCwUAA4IB
-AQCnvjUUMwoZmX8ZHhIW4q/bnijTV2zBq0nUqpEPcww8KRvpjLTKqWs+/je32Ryw
-TYB8ANwxpfY2slxNOB/JeZ90Eg/9VZMnrCgOMh7rpLZVef8XX/8tlllwrXb3zSan
-IKhqETksLsLzsedpnBdrNc1Lc1GSoew03MLvOgR6enHwWeWzt6f+zgOGz6Cq54Pz
-23NzY4rXCSREdsJ22dTHEiVohR9gCeP3F3VjojJoUGLxObyfrZuGLjUF79uvdKtQ
-e1oe4EXZqH7Xnt266qIRyL6x4dy2u/1uv8Kfyx4JQHNxvQH34m3hEfzFq6ic23Rt
-hujmpPI7rjgMFYcGU9OfRnv4
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIIFFjCCAv6gAwIBAgIRAJErCErPDBinU/bWLiWnX1owDQYJKoZIhvcNAQELBQAw
-TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
-cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMjAwOTA0MDAwMDAw
-WhcNMjUwOTE1MTYwMDAwWjAyMQswCQYDVQQGEwJVUzEWMBQGA1UEChMNTGV0J3Mg
-RW5jcnlwdDELMAkGA1UEAxMCUjMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC7AhUozPaglNMPEuyNVZLD+ILxmaZ6QoinXSaqtSu5xUyxr45r+XXIo9cP
-R5QUVTVXjJ6oojkZ9YI8QqlObvU7wy7bjcCwXPNZOOftz2nwWgsbvsCUJCWH+jdx
-sxPnHKzhm+/b5DtFUkWWqcFTzjTIUu61ru2P3mBw4qVUq7ZtDpelQDRrK9O8Zutm
-NHz6a4uPVymZ+DAXXbpyb/uBxa3Shlg9F8fnCbvxK/eG3MHacV3URuPMrSXBiLxg
-Z3Vms/EY96Jc5lP/Ooi2R6X/ExjqmAl3P51T+c8B5fWmcBcUr2Ok/5mzk53cU6cG
-/kiFHaFpriV1uxPMUgP17VGhi9sVAgMBAAGjggEIMIIBBDAOBgNVHQ8BAf8EBAMC
-AYYwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMBIGA1UdEwEB/wQIMAYB
-Af8CAQAwHQYDVR0OBBYEFBQusxe3WFbLrlAJQOYfr52LFMLGMB8GA1UdIwQYMBaA
-FHm0WeZ7tuXkAXOACIjIGlj26ZtuMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEFBQcw
-AoYWaHR0cDovL3gxLmkubGVuY3Iub3JnLzAnBgNVHR8EIDAeMBygGqAYhhZodHRw
-Oi8veDEuYy5sZW5jci5vcmcvMCIGA1UdIAQbMBkwCAYGZ4EMAQIBMA0GCysGAQQB
-gt8TAQEBMA0GCSqGSIb3DQEBCwUAA4ICAQCFyk5HPqP3hUSFvNVneLKYY611TR6W
-PTNlclQtgaDqw+34IL9fzLdwALduO/ZelN7kIJ+m74uyA+eitRY8kc607TkC53wl
-ikfmZW4/RvTZ8M6UK+5UzhK8jCdLuMGYL6KvzXGRSgi3yLgjewQtCPkIVz6D2QQz
-CkcheAmCJ8MqyJu5zlzyZMjAvnnAT45tRAxekrsu94sQ4egdRCnbWSDtY7kh+BIm
-lJNXoB1lBMEKIq4QDUOXoRgffuDghje1WrG9ML+Hbisq/yFOGwXD9RiX8F6sw6W4
-avAuvDszue5L3sz85K+EC4Y/wFVDNvZo4TYXao6Z0f+lQKc0t8DQYzk1OXVu8rp2
-yJMC6alLbBfODALZvYH7n7do1AZls4I9d1P4jnkDrQoxB3UqQ9hVl3LEKQ73xF1O
-yK5GhDDX8oVfGKF5u+decIsH4YaTw7mP3GFxJSqv3+0lUFJoi5Lc5da149p90Ids
-hCExroL1+7mryIkXPeFM5TgO9r0rvZaBFOvV2z0gp35Z0+L4WPlbuEjN/lxPFin+
-HlUjr8gRsI3qfJOQFy/9rKIJR0Y/8Omwt/8oTWgy1mdeHmmjk7j1nYsvC9JSQ6Zv
-MldlTTKB3zhThV1+XWYp6rjd5JW1zbVWEkLNxE7GJThEUG3szgBVGP7pSWTUTsqX
-nLRbwHOoq7hHwg==
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIIFYDCCBEigAwIBAgIQQAF3ITfU6UK47naqPGQKtzANBgkqhkiG9w0BAQsFADA/
-MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
-DkRTVCBSb290IENBIFgzMB4XDTIxMDEyMDE5MTQwM1oXDTI0MDkzMDE4MTQwM1ow
-TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
-cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwggIiMA0GCSqGSIb3DQEB
-AQUAA4ICDwAwggIKAoICAQCt6CRz9BQ385ueK1coHIe+3LffOJCMbjzmV6B493XC
-ov71am72AE8o295ohmxEk7axY/0UEmu/H9LqMZshftEzPLpI9d1537O4/xLxIZpL
-wYqGcWlKZmZsj348cL+tKSIG8+TA5oCu4kuPt5l+lAOf00eXfJlII1PoOK5PCm+D
-LtFJV4yAdLbaL9A4jXsDcCEbdfIwPPqPrt3aY6vrFk/CjhFLfs8L6P+1dy70sntK
-4EwSJQxwjQMpoOFTJOwT2e4ZvxCzSow/iaNhUd6shweU9GNx7C7ib1uYgeGJXDR5
-bHbvO5BieebbpJovJsXQEOEO3tkQjhb7t/eo98flAgeYjzYIlefiN5YNNnWe+w5y
-sR2bvAP5SQXYgd0FtCrWQemsAXaVCg/Y39W9Eh81LygXbNKYwagJZHduRze6zqxZ
-Xmidf3LWicUGQSk+WT7dJvUkyRGnWqNMQB9GoZm1pzpRboY7nn1ypxIFeFntPlF4
-FQsDj43QLwWyPntKHEtzBRL8xurgUBN8Q5N0s8p0544fAQjQMNRbcTa0B7rBMDBc
-SLeCO5imfWCKoqMpgsy6vYMEG6KDA0Gh1gXxG8K28Kh8hjtGqEgqiNx2mna/H2ql
-PRmP6zjzZN7IKw0KKP/32+IVQtQi0Cdd4Xn+GOdwiK1O5tmLOsbdJ1Fu/7xk9TND
-TwIDAQABo4IBRjCCAUIwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYw
-SwYIKwYBBQUHAQEEPzA9MDsGCCsGAQUFBzAChi9odHRwOi8vYXBwcy5pZGVudHJ1
-c3QuY29tL3Jvb3RzL2RzdHJvb3RjYXgzLnA3YzAfBgNVHSMEGDAWgBTEp7Gkeyxx
-+tvhS5B1/8QVYIWJEDBUBgNVHSAETTBLMAgGBmeBDAECATA/BgsrBgEEAYLfEwEB
-ATAwMC4GCCsGAQUFBwIBFiJodHRwOi8vY3BzLnJvb3QteDEubGV0c2VuY3J5cHQu
-b3JnMDwGA1UdHwQ1MDMwMaAvoC2GK2h0dHA6Ly9jcmwuaWRlbnRydXN0LmNvbS9E
-U1RST09UQ0FYM0NSTC5jcmwwHQYDVR0OBBYEFHm0WeZ7tuXkAXOACIjIGlj26Ztu
-MA0GCSqGSIb3DQEBCwUAA4IBAQAKcwBslm7/DlLQrt2M51oGrS+o44+/yQoDFVDC
-5WxCu2+b9LRPwkSICHXM6webFGJueN7sJ7o5XPWioW5WlHAQU7G75K/QosMrAdSW
-9MUgNTP52GE24HGNtLi1qoJFlcDyqSMo59ahy2cI2qBDLKobkx/J3vWraV0T9VuG
-WCLKTVXkcGdtwlfFRjlBz4pYg1htmf5X6DYO8A4jqv2Il9DjXA6USbW1FzXSLr9O
-he8Y4IWS6wY7bCkjCWDcRQJMEhg76fsO3txE+FiYruq9RUWhiF1myv4Q6W+CyBFC
-Dfvp7OOGAN6dEOM4+qR9sdjoSYKEBpsr6GtPAQw4dy753ec5
------END CERTIFICATE-----
-)EOF";
+#include "SocketIoTSSLClient.h"
 
-static X509List SocketIoTCert(CERT);
+enum DState {
+    CONNECT_WIFI,
+    CONNECT_SERVER,
+    CONFIG_PORTAL,
+    STATE_RUNNING
+};
 
-static WiFiClientSecure client;
-static SocketIoTClient<WiFiClientSecure> socketIoT(client);
+namespace DeviceState{
+    DState state;
+    DState get(){
+        return state;
+    }
+    void set(DState stat){
+        state = stat;
+    }
+};
 
-SocketIoTConnected()
-{
-    socketIoT.syncWithServer();
+
+struct Store {
+    uint8_t magic;
+    char ssid[32];
+    char password[62];
+    char host[30];
+    char token[34];
+    uint16_t port;
+};
+
+Store store;
+
+void init_store(){
+    EEPROM.begin(sizeof(Store));
+    EEPROM.get(0, store);
+
+    if(store.magic == 0xFF){
+        LOG1("Store Found");
+        DeviceState::set(CONNECT_WIFI);
+    }else{
+        LOG1("Store Not Found");
+        DeviceState::set(CONFIG_PORTAL);
+    }
 }
 
-SocketIoTDisconnected()
-{
-    Serial.println("SocketIoTDisconnected");
+void save_store(){
+    EEPROM.put(0, store);
+    EEPROM.commit();
 }
 
-SocketIoTWrite(1)
-{
+void reset_store(){
+    memset(&store, 0, sizeof(store));
+    save_store();
+    Serial.println("Resetting Store and Opening Portal");
+    DeviceState::set(CONFIG_PORTAL);
+}
+
+
+uint32_t press_time = 0;
+
+ICACHE_RAM_ATTR
+void btn_press(){
+    if(!digitalRead(0)){
+        press_time = millis();
+    }else{
+        if(millis() - press_time >= 6000 ){
+            reset_store();
+        }
+        press_time = 0;
+    }
+}
+
+
+void init_btn(){
+    pinMode(0, INPUT_PULLUP);
+    attachInterrupt(0, btn_press, CHANGE);
+}
+
+template <typename T, int size>
+void StrCopy(String& str, T(&arr)[size]){
+    str.toCharArray(arr, size);
+}
+
+
+static const char* ROOTPAGE PROGMEM = R"html(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config</title>
+</head>
+<body>
+    <form action="/config" method="get">
+        <div>
+            <label for="ssid">SSID:</label>
+            <input type="text" name="ssid" id="ssid">
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="text" name="password" id="password">
+        </div>
+        <div>
+            <label for="host">Host:</label>
+            <input type="text" name="host" id="host">
+        </div>
+        <div>
+            <label for="port">Port:</label>
+            <input type="number" name="port" id="port">
+        </div>
+        <div>
+            <label for="token">Token:</label>
+            <input type="text" name="token" id="token">
+        </div>
+        <div>
+            <input type="submit" value="submit">
+        </div>
+    </form>
+</body>
+</html>
+)html";
+
+
+void connect_wifi(){
+    LOG2("Connecting to ", store.ssid);
+    WiFi.mode(WIFI_STA);
+
+    WiFi.begin(store.ssid, store.password);
+
+    uint32_t timeout = millis() + 10000;
+
+    while(timeout > millis() && WiFi.status() != WL_CONNECTED){
+        delay(10);
+    }
+
+    if(WiFi.status() == WL_CONNECTED){
+        LOG1("WiFi Connected");
+        DeviceState::set(CONNECT_SERVER);
+        return;
+    }
+
+    LOG1("Timout! Opening Config Portal");
+
+    DeviceState::set(CONFIG_PORTAL);
+}
+
+
+void getAPName(char* buff, size_t len){
+    snprintf(buff, len, "SocketIoT-%s", String(ESP.getChipId(), HEX).c_str());
+}
+
+void open_portal(){
+    ESP8266WebServer server(80);
+    ESP8266HTTPUpdateServer updateServer;
+    
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+
+    WiFi.mode(WIFI_STA);
+    char buff[60];
+    getAPName(buff, sizeof(buff));
+    WiFi.softAP(buff);
+    delay(300);
+
+    LOG2("Opened AP: ", buff);
+    LOG2("AP IP: ", WiFi.softAPIP().toString());
+    
+    server.on("/", [&](){
+        server.send(200, "text/html", ROOTPAGE);
+    });
+
+    server.on("/wifiscan", [&](){
+        int n = WiFi.scanNetworks(false, true);
+        if(n > 0){
+            int indices[n];
+            for(int i = 0; i < n; i++){
+                indices[i] = i;
+            }
+
+            for(int i = 0; i < n; i++){
+                for(int j = i + 1; j < n; j++){
+                    if(WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])){
+                        std::swap(indices[i], indices[j]);
+                    }
+                }
+            }
+
+            server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+            server.send(200, "application/json", "[");
+
+            char buff[256];
+
+            for(int i = 0; i < n; i++){
+                int id = indices[i];
+
+                const char* enc;
+                switch (WiFi.encryptionType(id)) {
+                    case ENC_TYPE_WEP:  enc = "WEP"; break;
+                    case ENC_TYPE_TKIP: enc = "WPA/PSK"; break;
+                    case ENC_TYPE_CCMP: enc = "WPA2/PSK"; break;
+                    case ENC_TYPE_AUTO: enc = "WPA/WPA2/PSK"; break;
+                    case ENC_TYPE_NONE: enc = "OPEN"; break;
+                    default:            enc = "unknown"; break;
+                }
+
+                snprintf(buff, sizeof(buff),
+                    R"json({"ssid":"%s", "bssid":"%s", "rssi":%i, "enc":"%s", "channel":%i, "hidden":%d})json",
+                    WiFi.SSID(id),
+                    WiFi.BSSIDstr(id).c_str(),
+                    WiFi.RSSI(id),
+                    enc,
+                    WiFi.channel(id),
+                    WiFi.isHidden(id)
+                );
+                server.sendContent(buff);
+                if(i != n - 1){
+                    server.sendContent(",");
+                }
+            }
+            server.sendContent("]");
+        }else{
+            server.send(200, "application/json", "[]");
+        }
+
+    });
+
+    server.on("/config", [&](){
+        String ssid = server.arg("ssid");
+        String password = server.arg("password");
+        String host = server.arg("host");
+        String port = server.arg("port");
+        String token = server.arg("token");
+ 
+
+        if(ssid.length() && password.length() && host.length() && token.length() && port.length()){
+            StrCopy(ssid, store.ssid);
+            StrCopy(password, store.password);
+            StrCopy(host, store.host);
+            StrCopy(token, store.token);
+
+            store.port = port.toInt();
+            store.magic = 0xFF;
+            
+            save_store();
+
+            server.send(200, "application/json", R"json({error:false, message:"Saved Config and Trying to Connect"})json");
+        
+            delay(100);
+
+            DeviceState::set(CONNECT_WIFI);
+
+        }else{
+            server.send(200, "application/json", R"json({error: true, message:"Incomplete Fields"})json");
+        }
+    });
+
+    updateServer.setup(&server, "/update");
+
+    server.begin();
+
+    while(DeviceState::state == CONFIG_PORTAL){
+        delay(10);
+        server.handleClient();
+    }
+
+    server.stop();    
+}
+
+
+void connect_server(){
+    LOG1("Connecting to Server");
+
+    SocketIoT.init(store.token, store.host, store.port);
+
+    time_millis_t timeout = MILLIS() + 6000;
+
+    while(timeout > millis() && !SocketIoT.connected() && !SocketIoT.authFailed()){
+        delay(10);
+        SocketIoT.loop();
+    }
+
+    if(millis() > timeout){
+        LOG1("Server Connection Timeout");
+        return;
+    }
+
+    if(SocketIoT.authFailed()){
+        LOG1("Auth Failed! Opening Portal");
+        DeviceState::set(CONFIG_PORTAL);
+    }else{
+        DeviceState::set(STATE_RUNNING);
+    }
+}
+
+
+SocketIoTConnected(){
+    SocketIoT.syncWithServer();
+}
+
+SocketIoTWrite(1){
     digitalWrite(LED_BUILTIN, data.toInt());
 }
 
-void syncTime()
-{
-    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-
-    Serial.print("Waiting for NTP time sync: ");
-    time_t now = time(nullptr);
-    while (now < 8 * 3600 * 2)
-    {
-        delay(500);
-        Serial.print(".");
-        now = time(nullptr);
-    }
-    Serial.println("");
-    struct tm timeinfo;
-    gmtime_r(&now, &timeinfo);
-    Serial.print("Current time: ");
-    Serial.print(asctime(&timeinfo));
-}
 
 void setup()
 {
-
     Serial.begin(115200);
-
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    WiFi.begin("", "");
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-
-    syncTime();
-
-    client.setTrustAnchors(&SocketIoTCert);
-
-    socketIoT.init("", "", 443);
+    init_btn();
+    init_store();  
+    pinMode(LED_BUILTIN, OUTPUT); 
 }
+
+
+
+
 
 void loop()
 {
-    socketIoT.loop();
+   switch(DeviceState::state){
+        case CONNECT_WIFI:
+            connect_wifi();
+            break;
+        case CONFIG_PORTAL:
+            open_portal();
+            break;
+        case CONNECT_SERVER:
+            connect_server();
+            break;
+        case STATE_RUNNING:
+            SocketIoT.loop();
+            break;
+   }
 }

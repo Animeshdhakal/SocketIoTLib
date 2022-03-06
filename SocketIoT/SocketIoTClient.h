@@ -133,6 +133,11 @@ public:
         return state == CONNECTED;
     }
 
+    bool authFailed()
+    {
+        return state == AUTH_FAILED;
+    }
+
     void syncWithServer()
     {
         sendMsg(SYNC);
