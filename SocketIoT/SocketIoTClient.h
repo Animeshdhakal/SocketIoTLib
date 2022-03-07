@@ -10,6 +10,7 @@
 #include "SocketIoTSpec.h"
 #include "SocketIoTConfig.h"
 #include "SocketIoTHandler.h"
+#include "SocketIoTIdentifyDevice.h"
 
 template <typename Client>
 class SocketIoTClient

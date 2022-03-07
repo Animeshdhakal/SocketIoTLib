@@ -463,16 +463,29 @@ SocketIoTOTA(){
     start_ota(url);
 }
 
+void printDeviceInfo(){
+    LOG1(String("Firmware: ") + FIRMWARE_VERSION " (build " __DATE__ " " __TIME__ ")");
+    LOG1(String("Device: ") + HARDWARE_NAME + "@" + ESP.getCpuFreqMHz() + "MHz");
+    LOG1(String("MAC: ") + WiFi.macAddress());
+    LOG1(String("Flash: ") + ESP.getFlashChipRealSize()/1024 + "KB");
+    String coreVersion = ESP.getCoreVersion();
+    coreVersion.replace("-", ".");
+    LOG1(String("Core: ")  + coreVersion);
+    LOG1(String("SDK: ") + ESP.getSdkVersion());
+    LOG1(String("Boot Version: ") + ESP.getBootVersion());
+    LOG1(String("Boot Mode: ") + ESP.getBootMode());
+    LOG1(String("Firmware Info: ") + ESP.getSketchSize() + "/" + ESP.getFreeSketchSpace() + ", MD5:" + ESP.getSketchMD5());
+    LOG1(String("Free Memory: ") + ESP.getFreeHeap());
+}
+
 void setup()
 {
     Serial.begin(115200);
+    printDeviceInfo();
     init_btn();
     init_store();
     pinMode(LED_BUILTIN, OUTPUT); 
 }
-
-
-
 
 
 void loop()
