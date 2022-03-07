@@ -6,3 +6,5 @@ void SocketIoTPass() {}
 SocketIoTConnected() __attribute__((weak, alias("SocketIoTPass")));
 
 SocketIoTDisconnected() __attribute__((weak, alias("SocketIoTPass")));
+
+SocketIoTOTA() __attribute__((weak, alias("SocketIoTPass")));

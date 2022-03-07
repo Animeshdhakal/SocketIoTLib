@@ -17,14 +17,15 @@ enum MsgType
     READ,
     PING,
     SYNC,
-    INFO
+    INFO,
+    SYS
 };
 
 enum SocketIoTState
 {
     CONNECTING,
     CONNECTED,
-    AUTH_FAILED,
+    AUTH_FAILED
 };
 
 #if defined(ESP32) || defined(ESP8266)
@@ -46,6 +47,14 @@ enum SocketIoTState
 #else
 #error byte order problem
 #endif
+#endif
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    #define STR32(a,b,c,d) ((uint32_t(a) << 0) | (uint32_t(b) << 8) | (uint32_t(c) << 16) | (uint32_t(d) << 24))
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    #define STR32(a,b,c,d) ((uint32_t(d) << 0) | (uint32_t(c) << 8) | (uint32_t(b) << 16) | (uint32_t(a) << 24))
+#else
+    #error byte order problem
 #endif
 
 typedef uint32_t time_millis_t;
@@ -76,5 +85,7 @@ time_millis_t MILLIS()
 #define InfoParam(x, y) x "\0" y "\0"
 
 #define SPROGMEM PROGMEM
+
+#define OTA_CMD STR32('o', 't', 'a', 0)
 
 #endif

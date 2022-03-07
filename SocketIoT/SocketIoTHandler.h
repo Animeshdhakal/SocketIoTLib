@@ -13,6 +13,7 @@
 
 #define SocketIoTConnected() void socketIoTConnected()
 #define SocketIoTDisconnected() void socketIoTDisconnected()
+#define SocketIoTOTA() void socketIoTOTA(const char* url)
 
 typedef void (*SocketIoTCallback)(SocketIoTData &data);
 
@@ -32,6 +33,8 @@ extern "C"
     SocketIoTConnected();
 
     SocketIoTDisconnected();
+
+    SocketIoTOTA();
 
     void SocketIoTPass();
 

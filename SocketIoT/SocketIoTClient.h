@@ -35,7 +35,7 @@ public:
         LOG4(SF("Connecting to "), host, ":", port);
     }
 
-    void processWrite(SocketIoTData data)
+    void processWrite(SocketIoTData& data)
     {
         const uint8_t pin = data.toInt();
         if (++data >= data.end())
@@ -50,6 +50,20 @@ public:
         {
             LOG2(SF("No handler for pin "), pin);
         }
+    }
+
+    void processSys(SocketIoTData& data){
+        uint32_t cmd;
+        memcpy(&cmd, data.toStr(), sizeof(cmd));
+
+        if(++data >= data.end()) return;
+
+        switch(cmd){
+            case OTA_CMD:
+                socketIoTOTA(data.toStr());  
+                break;              
+        }
+
     }
 
     template <typename T>
@@ -84,8 +98,8 @@ public:
                 if (buff[0] - '0' == 1)
                 {
                     LOG1(SF("Authenticated"));
-                    sendInfo();
                     state = CONNECTED;
+                    sendInfo();
                     socketIoTConnected();
                 }
                 else
@@ -99,6 +113,9 @@ public:
                 break;
             case WRITE:
                 processWrite(data);
+                break;
+            case SYS:
+                processSys(data);
                 break;
             }
         }

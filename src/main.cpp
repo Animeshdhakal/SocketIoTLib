@@ -302,6 +302,154 @@ void connect_server(){
 }
 
 
+bool parseURL(String url, String& protocol, String& host, String& path, int& port){
+    int index = url.indexOf(":");
+    
+    if(index < 0){
+        return false;
+    }
+    
+    protocol = url.substring(0, index);
+    url.remove(0, index + 3);
+
+    index = url.indexOf("/");
+    host = url.substring(0, index);
+    
+    url.remove(0, index);
+    index = url.indexOf(":");
+    
+    if(protocol == "https"){
+        port = 443;
+    }else{
+        port = 80;
+    }
+
+    if(url.length()){
+        path = url;
+    }else{
+        path = "/";
+    }
+    
+
+   return true;
+}
+
+
+void restartMCU(){
+    ESP.restart();
+    delay(1000);
+    ESP.reset();
+    while (1)
+    {
+    };
+}
+
+void start_ota(const char* url){
+    String protocol, host, path;
+    int port;
+    if(!parseURL(url, protocol, host, path, port)){
+        LOG1("OTA Failed : Invalid URL");
+        return;
+    }
+
+    WiFiClient::stopAll();
+    WiFiUDP::stopAll();
+
+    syncTime();
+
+    WiFiClientSecure client;
+
+    client.setTrustAnchors(&SocketIoTCert);
+
+    if(!client.connect(host, port)){
+        LOG1("OTA Client Connection Failed");
+        return;
+    }
+
+    client.print(String("GET ") + path + " HTTP/1.0\r\n"
+               + "Host: " + host + "\r\n"
+               + "Connection: keep-alive\r\n"
+               + "\r\n");
+
+    uint32_t timeout = millis();
+    while(client.connected() && !client.available()){
+        if(millis() - timeout > 10000L){
+            LOG1("Response Timeout");
+        }
+        delay(10);
+    }
+
+
+    int contentLength = 0;
+    while(client.available()){
+        String line = client.readStringUntil('\n');
+        line.trim();
+        line.toLowerCase();
+
+        if(line.startsWith("content-length")){
+            contentLength = line.substring(line.lastIndexOf(':') + 1).toInt();
+        }else if(line.length() == 0){
+            break;
+        }
+        delay(10);
+    }
+
+    LOG2("Content-Length: ", contentLength);
+
+    if(!Update.begin(contentLength)){
+        LOG1("Update Begin Failed");
+        return;
+    }
+
+    int written = 0;
+    int prevProgress = 0;
+    uint8_t buff[256];
+
+    while(client.connected() && written < contentLength){
+        delay(10);
+        timeout = millis();
+
+        while(client.connected() && !client.available()){
+            delay(1);
+            if(millis() - timeout > 10000L){
+                LOG1("Timeout");
+                return;
+            }
+        }
+
+        int rlen = client.read(buff, sizeof(buff));
+
+        if(rlen <= 0) continue;
+
+        Update.write(buff, rlen);
+        written += rlen;
+
+        int progress = (written*100)/contentLength;
+        if(progress - prevProgress >= 10 || progress == 100){
+            LOG3("Written ", progress, "%");
+            prevProgress = progress;
+        }
+    }
+
+    client.stop();
+
+    if(written != contentLength){
+        LOG1("OTA Writing Failed");
+    }
+
+    if(!Update.end()){
+        LOG1("Update Not Ended");
+    }
+
+    if(!Update.isFinished()){
+        LOG1("Update Not Finished");
+    }
+
+    LOG1("Update Finished ! Rebooting");
+
+    restartMCU();
+}
+
 SocketIoTConnected(){
     SocketIoT.syncWithServer();
 }
@@ -310,12 +458,16 @@ SocketIoTWrite(1){
     digitalWrite(LED_BUILTIN, data.toInt());
 }
 
+SocketIoTOTA(){
+    LOG2("Starting OTA, URL: ", url);
+    start_ota(url);
+}
 
 void setup()
 {
     Serial.begin(115200);
     init_btn();
-    init_store();  
+    init_store();
     pinMode(LED_BUILTIN, OUTPUT); 
 }
 
