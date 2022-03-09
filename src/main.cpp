@@ -59,7 +59,7 @@ void save_store(){
 void reset_store(){
     memset(&store, 0, sizeof(store));
     save_store();
-    Serial.println("Resetting Store and Opening Portal");
+    LOG1("Store Cleared ! Opening Portal");
     DeviceState::set(CONFIG_PORTAL);
 }
 

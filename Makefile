@@ -1,7 +1,8 @@
-ESP_ROOT = /home/b/Desktop/SocketIoTLib/build/esp8266
-SKETCH = ./src/main.cpp
+CURRENT_DIR = $(shell pwd)
+ESP_ROOT = $(CURRENT_DIR)/build/esp8266
+SKETCH = $(CURRENT_DIR)/src/main.cpp
+LIBS = $(CURRENT_DIR)/SocketIoT
 MONITOR_SPEED = 115200
-LIBS = /home/b/Desktop/SocketIoTLib/SocketIoT
-BOARD = nodemcu
+BOARD = esp8266
 
-include ./build/makeEspArduino/makeEspArduino.mk
+include $(CURRENT_DIR)/build/makeEspArduino/makeEspArduino.mk

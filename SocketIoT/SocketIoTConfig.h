@@ -1,6 +1,6 @@
 #ifndef SocketIoTConfig_h
 #define SocketIoTConfig_h
 
-#define HEARTBEAT 10
+#define HEARTBEAT 50
 
 #endif

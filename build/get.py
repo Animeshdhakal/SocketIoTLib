@@ -6,17 +6,19 @@ def help():
     c = "List of Commands: \n"
     c += "`python3 build/get.py install` for Installation\n"
     c += "`python3 build/get.py vscode` for vscode"
+    c += "`python3 build/get.py update` for updating core"
     c += "`python3 build/get.py makefile` for generating Makefile vscode"
     print(c)
 
 def generateMakefile(board):
     file = open("Makefile", "w")
-    content = "ESP_ROOT = {0}\n".format(os.path.abspath("build/"+board))
-    content += "SKETCH = ./src/main.cpp\n"
+    content = "CURRENT_DIR = $(shell pwd)\n"
+    content += "ESP_ROOT = $(CURRENT_DIR)/build/"+board+"\n"
+    content += "SKETCH = $(CURRENT_DIR)/src/main.cpp\n"
+    content += "LIBS = $(CURRENT_DIR)/SocketIoT\n"
     content += "MONITOR_SPEED = 115200\n"
-    content += "LIBS = ./lib\n"
     content += "BOARD = {0}\n\n".format(board)
-    content += "include ./build/makeEspArduino/makeEspArduino.mk"
+    content += "include $(CURRENT_DIR)/build/makeEspArduino/makeEspArduino.mk"
     file.write(content)
     file.close()
 
@@ -66,10 +68,19 @@ def install():
     else:
         print("This board is not available or Invalid")
 
+def update():
+    for path in os.listdir("build"):
+        if(os.path.isdir("build/"+path)):
+            cmd = "cd build/"+path+"\n"
+            cmd += "git pull"
+            os.system(cmd)
+
 def main():
     if len(sys.argv) >= 2:
         if sys.argv[1] == 'install':
             install()
+        elif sys.argv[1] == "update":
+            update()
         elif sys.argv[1] == 'vscode':
             board = input("Enter the Board Type (8266 for ESP8266 and 32 for ESP32): ")
             if board in ["8266", "32"]:
