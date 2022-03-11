@@ -25,7 +25,8 @@ enum SocketIoTState
 {
     CONNECTING,
     CONNECTED,
-    AUTH_FAILED
+    AUTH_FAILED,
+    DISCONNECTED
 };
 
 #if defined(ESP32) || defined(ESP8266)

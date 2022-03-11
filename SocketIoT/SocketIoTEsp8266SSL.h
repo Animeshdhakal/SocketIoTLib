@@ -2,6 +2,7 @@
 #define SocketIoTSSLClient_h
 #include <WiFiClientSecure.h>
 #include "SocketIoTClient.h"
+#include "connectors/SocketIoTArduinoConnector.h"
 
 static const char *CERT SPROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -120,22 +121,38 @@ void syncTime()
 }
 
 template <typename Client>
-class SocketIoTSSLClient : public SocketIoTClient<Client>
+class SocketIoTESP8266SslConnector : public SocketIoTArduinoConnector<Client>
 {
 public:
-    SocketIoTSSLClient(Client &client) : SocketIoTClient<Client>(client)
+    SocketIoTESP8266SslConnector(Client &client) : SocketIoTArduinoConnector<Client>(client)
+    {
+    }
+
+    void setTrustAnchors(X509List* cert){
+        this->client.setTrustAnchors(cert);
+    }
+};
+
+
+
+template <typename Client>
+class SocketIoTSslClient : public SocketIoTClient<Client>
+{
+public:
+    SocketIoTSslClient(Client &client) : SocketIoTClient<Client>(client)
     {
     }
 
     void init(const char *auth, const char *host, uint16_t port)
     {
         syncTime();
-        this->client.setTrustAnchors(&SocketIoTCert);
+        this->conn.setTrustAnchors(&SocketIoTCert);
         SocketIoTClient<Client>::init(auth, host, port);
     }
 };
 
 static WiFiClientSecure wifiClient;
-static SocketIoTSSLClient<WiFiClientSecure> SocketIoT(wifiClient);
+static SocketIoTESP8266SslConnector<WiFiClientSecure> connector(wifiClient);
+static SocketIoTSslClient<SocketIoTESP8266SslConnector<WiFiClientSecure>> SocketIoT(connector);
 
 #endif

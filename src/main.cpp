@@ -7,7 +7,7 @@
 #define BLUEPRINT_ID "Animesh"
 #define DEBUG
 
-#include "SocketIoTSSLClient.h"
+#include "SocketIoTEsp8266SSL.h"
 
 enum DState {
     CONNECT_WIFI,
@@ -64,7 +64,7 @@ void reset_store(){
 }
 
 
-uint32_t press_time = 0;
+volatile uint32_t press_time = 0;
 
 ICACHE_RAM_ATTR
 void btn_press(){
@@ -72,6 +72,7 @@ void btn_press(){
         press_time = millis();
     }else{
         if(millis() - press_time >= 6000 ){
+            SocketIoT.disconnect();
             reset_store();
         }
         press_time = 0;
@@ -464,6 +465,8 @@ SocketIoTOTA(){
 }
 
 void printDeviceInfo(){
+    LOG1();
+    LOG1(SF("---------------------INFO---------------------"))
     LOG1(String("Firmware: ") + FIRMWARE_VERSION " (build " __DATE__ " " __TIME__ ")");
     LOG1(String("Device: ") + HARDWARE_NAME + "@" + ESP.getCpuFreqMHz() + "MHz");
     LOG1(String("MAC: ") + WiFi.macAddress());
@@ -475,7 +478,8 @@ void printDeviceInfo(){
     LOG1(String("Boot Version: ") + ESP.getBootVersion());
     LOG1(String("Boot Mode: ") + ESP.getBootMode());
     LOG1(String("Firmware Info: ") + ESP.getSketchSize() + "/" + ESP.getFreeSketchSpace() + ", MD5:" + ESP.getSketchMD5());
-    LOG1(String("Free Memory: ") + ESP.getFreeHeap());
+    LOG1(String("Free Memory: ") + ESP.getFreeHeap()/1024 + "KB");
+    LOG1(SF("---------------------INFO---------------------"))
 }
 
 void setup()

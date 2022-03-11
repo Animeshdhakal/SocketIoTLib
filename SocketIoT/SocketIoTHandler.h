@@ -38,6 +38,8 @@ extern "C"
 
     void SocketIoTPass();
 
+    void SocketIoTOTAPass(const char*);
+
 #ifdef __cplusplus
 }
 #endif

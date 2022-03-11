@@ -12,27 +12,24 @@
 #include "SocketIoTHandler.h"
 #include "SocketIoTIdentifyDevice.h"
 
-template <typename Client>
+template <typename Connector>
 class SocketIoTClient
 {
 protected:
-    Client &client;
+    Connector &conn;
     const char *auth;
-    const char *host;
-    uint16_t port;
     SocketIoTState state;
     time_millis_t last_ping;
     time_millis_t last_recv;
     time_millis_t last_send;
 
 public:
-    SocketIoTClient(Client &client) : client(client), last_ping(0), last_send(0), last_recv(0), state(CONNECTING) {}
+    SocketIoTClient(Connector &conn) : conn(conn), last_ping(0), last_send(0), last_recv(0), state(CONNECTING) {}
 
     void init(const char *auth, const char *host, uint16_t port)
     {
         this->auth = auth;
-        this->host = host;
-        this->port = port;
+        this->conn.begin(host, port);
         LOG4(SF("Connecting to "), host, ":", port);
     }
 
@@ -80,14 +77,14 @@ public:
     void processData()
     {
         SocketIoTHeader hdr;
-        if (client.read((uint8_t *)&hdr, sizeof(hdr)) == sizeof(SocketIoTHeader))
+        if (conn.read((uint8_t *)&hdr, sizeof(hdr)) == sizeof(SocketIoTHeader))
         {
             last_recv = MILLIS();
             hdr.msg_type = ntohs(hdr.msg_type);
             hdr.msg_len = ntohs(hdr.msg_len);
 
             char buff[hdr.msg_len + 1];
-            client.read((uint8_t *)buff, hdr.msg_len);
+            conn.read((uint8_t *)buff, hdr.msg_len);
             buff[hdr.msg_len] = 0;
 
             SocketIoTData data(buff, hdr.msg_len);
@@ -99,6 +96,7 @@ public:
                 if (buff[0] - '0' == 1)
                 {
                     LOG1(SF("Authenticated"));
+                    LOG3("Ping ", last_recv - last_send, " MS");
                     state = CONNECTED;
                     sendInfo();
                     socketIoTConnected();
@@ -142,13 +140,18 @@ public:
         uint8_t fullbuff[length + sizeof(SocketIoTHeader)];
         memcpy(fullbuff, &hdr, sizeof(SocketIoTHeader));
         memcpy(fullbuff + sizeof(SocketIoTHeader), msg, length);
-        client.write(fullbuff, length + sizeof(SocketIoTHeader));
+        conn.write(fullbuff, length + sizeof(SocketIoTHeader));
         last_send = MILLIS();
     }
 
     bool connected()
     {
         return state == CONNECTED;
+    }
+
+    void disconnect(){
+        state = DISCONNECTED;
+        this->conn.disconnect();
     }
 
     bool authFailed()
@@ -165,9 +168,13 @@ public:
     {
         YIELD();
 
-        if (client.connected())
+        if(state == DISCONNECTED){
+            return;
+        }
+
+        if (conn.connected())
         {
-            while (client.available() > 0)
+            while (conn.available() > 0)
             {
                 processData();
             }
@@ -192,7 +199,7 @@ public:
         }
         else if (state == CONNECTING)
         {
-            if (!client.connected() && client.connect(host, port))
+            if (!conn.connected() && conn.connect())
             {
                 LOG1(SF("Connected to Server"));
                 authenticate();
