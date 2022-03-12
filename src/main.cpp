@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
+#include <LittleFS.h>
 
 #define FIRMWARE_VERSION "1.0"
 #define BLUEPRINT_ID "Animesh"
@@ -28,7 +28,6 @@ namespace DeviceState{
 
 
 struct Store {
-    uint8_t magic;
     char ssid[32];
     char password[62];
     char host[30];
@@ -39,26 +38,33 @@ struct Store {
 Store store;
 
 void init_store(){
-    EEPROM.begin(sizeof(Store));
-    EEPROM.get(0, store);
+    if(!LittleFS.begin()){
+        LOG1("LittleFS Failed");
+        return;
+    }
 
-    if(store.magic == 0xFF){
+    File file = LittleFS.open("config", "r");
+
+    if(file){
+        file.read((uint8_t*)&store, sizeof(store));
         LOG1("Store Found");
         DeviceState::set(CONNECT_WIFI);
     }else{
         LOG1("Store Not Found");
         DeviceState::set(CONFIG_PORTAL);
     }
+
+    file.close();
 }
 
 void save_store(){
-    EEPROM.put(0, store);
-    EEPROM.commit();
+    File file = LittleFS.open("config", "w");
+    file.write((uint8_t*)&store, sizeof(store));
+    file.close();
 }
 
 void reset_store(){
-    memset(&store, 0, sizeof(store));
-    save_store();
+    LittleFS.remove("config");
     LOG1("Store Cleared ! Opening Portal");
     DeviceState::set(CONFIG_PORTAL);
 }
@@ -249,8 +255,7 @@ void open_portal(){
             StrCopy(token, store.token);
 
             store.port = port.toInt();
-            store.magic = 0xFF;
-            
+                        
             save_store();
 
             server.send(200, "application/json", R"json({error:false, message:"Saved Config and Trying to Connect"})json");
