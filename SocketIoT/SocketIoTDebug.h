@@ -3,34 +3,33 @@
 
 #include "SocketIoTSpec.h"
 
+
+#ifdef DEBUG
+
 #if defined(linux)
+
 #include <iostream>
+
 void LOG_TIME()
 {
-    std::cout << SF("[");
-    std::cout << MILLIS();
-    std::cout << SF("] ");
+    std::cout << SF("[") << MILLIS() << SF("] ");
 }
-
-template <typename T>
-void DEBUG_MULTI(T msg)
-{
+#define LOG1(msg) \
+    LOG_TIME();   \
     std::cout << msg << "\n";
-}
 
-template <typename T, typename... Args>
-void DEBUG_MULTI(T msg, Args... args)
-{
-    std::cout << msg;
-    DEBUG_MULTI(args...);
-}
+#define LOG2(msg, msg2) \
+    LOG_TIME();         \
+    std::cout << msg << msg2 << "\n";
 
-template <typename... Args>
-void DEBUG(Args... args)
-{
-    LOG_TIME();
-    DEBUG_MULTI(args...);
-}
+#define LOG3(msg, msg2, msg3) \
+    LOG_TIME();               \
+    std::cout << msg << msg2 << msg3 << "\n";
+
+#define LOG4(msg, msg2, msg3, msg4) \
+    LOG_TIME();                     \
+    std::cout << msg << msg2 << msg3 << msg4 << "\n";
+
 #else
 
 void LOG_TIME()
@@ -39,8 +38,6 @@ void LOG_TIME()
     Serial.print(MILLIS());
     Serial.print(SF("] "));
 }
-
-#ifdef DEBUG
 
 #define LOG1(msg) \
     LOG_TIME();   \
@@ -64,18 +61,13 @@ void LOG_TIME()
     Serial.print(msg3);             \
     Serial.println(msg4);
 
-#else
-
-#define LOG1
-
-#define LOG2
-
-#define LOG3
-
-#define LOG4
-
 #endif
 
+#else
+#define LOG1
+#define LOG2
+#define LOG3
+#define LOG4
 #endif
 
 #endif

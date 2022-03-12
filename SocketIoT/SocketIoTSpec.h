@@ -60,24 +60,13 @@ enum SocketIoTState
 
 typedef uint32_t time_millis_t;
 
-time_millis_t MILLIS()
-{
-    return millis();
-}
+time_millis_t MILLIS();
 
-#define DELAY delay
+void DELAY(time_millis_t);
 
 #define YIELD() DELAY(0);
 
-#if defined(__AVR__)
-
-#define SF(s) F(s)
-
-#else
-
 #define SF(s) s
-
-#endif
 
 #define Num2String(x) #x
 
@@ -85,7 +74,11 @@ time_millis_t MILLIS()
 
 #define InfoParam(x, y) x "\0" y "\0"
 
+#if defined(linux)
+#define SPROGMEM
+#else
 #define SPROGMEM PROGMEM
+#endif
 
 #define OTA_CMD STR32('o', 't', 'a', 0)
 

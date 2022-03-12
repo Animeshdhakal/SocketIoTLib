@@ -470,8 +470,7 @@ SocketIoTOTA(){
 }
 
 void printDeviceInfo(){
-    LOG1();
-    LOG1(SF("---------------------INFO---------------------"))
+    LOG1(SF("\n---------------------INFO---------------------"))
     LOG1(String("Firmware: ") + FIRMWARE_VERSION " (build " __DATE__ " " __TIME__ ")");
     LOG1(String("Device: ") + HARDWARE_NAME + "@" + ESP.getCpuFreqMHz() + "MHz");
     LOG1(String("MAC: ") + WiFi.macAddress());

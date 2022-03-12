@@ -35,11 +35,13 @@ public:
 
     void processWrite(SocketIoTData& data)
     {
-        const uint8_t pin = data.toInt();
+        const int pin = data.toInt();
+        
         if (++data >= data.end())
         {
             return;
         }
+
         if (SocketIoTHandlers[pin])
         {
             SocketIoTHandlers[pin](data);
@@ -132,7 +134,7 @@ public:
         sendMsg(AUTH, auth, strlen(auth));
     }
 
-    void sendMsg(uint16_t msg_type, const char *msg = NULL, size_t length = 0)
+    void sendMsg(uint16_t msg_type, const char *msg = NULL, uint16_t length = 0)
     {
         SocketIoTHeader hdr = {length, msg_type};
         hdr.msg_len = htons(hdr.msg_len);
@@ -189,6 +191,7 @@ public:
                 LOG1(SF("Server Disconnected"));
                 state = CONNECTING;
                 socketIoTDisconnected();
+                conn.disconnect();
             }
             else if (now - last_ping > HEARTBEAT * 1000 && (now - last_recv > HEARTBEAT * 1000 || now - last_send > HEARTBEAT * 1000))
             {

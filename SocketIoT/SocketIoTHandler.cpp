@@ -1,5 +1,4 @@
 #include "SocketIoTHandler.h"
-#include <ESP8266WiFi.h>
 
 void SocketIoTPass() {}
 void SocketIoTOTAPass(const char*) {}
