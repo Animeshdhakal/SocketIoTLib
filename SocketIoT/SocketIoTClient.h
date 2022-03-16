@@ -33,6 +33,13 @@ public:
         LOG4(SF("Connecting to "), host, ":", port);
     }
 
+    void init(const char *auth)
+    {
+        this->auth = auth;
+        this->conn.begin(DEFAULT_HOST, DEFAULT_PORT);
+        LOG4(SF("Connecting to "), DEFAULT_HOST, ":", DEFAULT_PORT);
+    }
+
     void processWrite(SocketIoTData& data)
     {
         const int pin = data.toInt();
@@ -69,7 +76,7 @@ public:
     template <typename T>
     void write(uint8_t pin, T value)
     {
-        char buff[100];
+        char buff[MAX_WRITE_BYTES];
         SocketIoTData data(buff, 0, sizeof(buff));
         data.put(pin);
         data.put(value);
@@ -84,6 +91,11 @@ public:
             last_recv = MILLIS();
             hdr.msg_type = ntohs(hdr.msg_type);
             hdr.msg_len = ntohs(hdr.msg_len);
+
+            if(hdr.msg_len > MAX_READ_BYTES){
+                LOG1("Msg Bigger than Max Read Bytes");
+                return;            
+            }
 
             char buff[hdr.msg_len + 1];
             conn.read((uint8_t *)buff, hdr.msg_len);
@@ -124,7 +136,17 @@ public:
 
     void sendInfo()
     {
-        static const char info[] SPROGMEM = "info\0" InfoParam("hbeat", NumToString(HEARTBEAT)) InfoParam("build", __DATE__ " " __TIME__) InfoParam("fv", FIRMWARE_VERSION) InfoParam("bid", BLUEPRINT_ID) "\0";
+        static const char info[] SPROGMEM = "info\0" 
+            InfoParam("hbeat", NumToString(HEARTBEAT)) 
+            InfoParam("build", __DATE__ " " __TIME__) 
+            InfoParam("fv", FIRMWARE_VERSION) 
+            InfoParam("bid", BLUEPRINT_ID) 
+            InfoParam("board", HARDWARE_NAME) 
+            InfoParam("bid", BLUEPRINT_ID) 
+            InfoParam("fv", FIRMWARE_VERSION) 
+            InfoParam("lv", SOCKETIOT_VERSION)        
+        "\0";
+
         size_t actualsize = sizeof(info) - 5 - 2;
         sendMsg(INFO, info + 5, actualsize);
     }
