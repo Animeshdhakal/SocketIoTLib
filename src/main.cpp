@@ -172,9 +172,11 @@ void open_portal(){
     WiFi.mode(WIFI_OFF);
     delay(100);
 
-    WiFi.mode(WIFI_STA);
+    WiFi.mode(WIFI_AP_STA);
+    
     char buff[60];
     getAPName(buff, sizeof(buff));
+    
     WiFi.softAP(buff);
     delay(300);
 
@@ -183,6 +185,20 @@ void open_portal(){
     
     server.on("/", [&](){
         server.send(200, "text/html", ROOTPAGE);
+    });
+
+    server.on("/info", [&](){
+        char buff[256];
+        snprintf(buff, sizeof(buff),
+            R"json({"hardware": "%s", "bid:"%s", "fv":"%s", "ssid":"%s", "mac":"%s"})json",
+            HARDWARE_NAME,
+            BLUEPRINT_ID,
+            FIRMWARE_VERSION, 
+            WiFi.softAPSSID().c_str(),
+            WiFi.macAddress().c_str()
+        );
+
+        server.send(200, "application/json", buff);
     });
 
     server.on("/wifiscan", [&](){
@@ -258,14 +274,14 @@ void open_portal(){
                         
             save_store();
 
-            server.send(200, "application/json", R"json({error:false, message:"Saved Config and Trying to Connect"})json");
+            server.send(200, "application/json", R"json({"error":false, "message":"Saved Config and Trying to Connect"})json");
         
             delay(100);
 
             DeviceState::set(CONNECT_WIFI);
 
         }else{
-            server.send(200, "application/json", R"json({error: true, message:"Incomplete Fields"})json");
+            server.send(200, "application/json", R"json({"error": true, "message":"Incomplete Fields"})json");
         }
     });
 

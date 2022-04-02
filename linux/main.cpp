@@ -85,7 +85,7 @@ void start_ota(const char* u){
 }
 
 int main(){
-    SocketIoT.init("", "", 443);
+    SocketIoT.init("", ".com", 443);
 
     for(;;){
         SocketIoT.loop();
