@@ -188,6 +188,12 @@ public:
         sendMsg(SYNC);
     }
 
+    void reconnectLogic(){
+        state = CONNECTING;
+        socketIoTDisconnected();
+        conn.disconnect();
+    }
+
     void loop()
     {
         YIELD();
@@ -196,7 +202,9 @@ public:
             return;
         }
 
-        if (conn.connected())
+        bool isServerConnected = conn.connected();
+
+        if (isServerConnected)
         {
             while (conn.available() > 0)
             {
@@ -208,12 +216,15 @@ public:
         {
             time_millis_t now = MILLIS();
 
+            if(!isServerConnected){
+               reconnectLogic();
+               return;
+            }
+
             if (now - last_recv > HEARTBEAT * 1000 * 2)
             {
                 LOG1(SF("Server Disconnected"));
-                state = CONNECTING;
-                socketIoTDisconnected();
-                conn.disconnect();
+                reconnectLogic();
             }
             else if (now - last_ping > HEARTBEAT * 1000 && (now - last_recv > HEARTBEAT * 1000 || now - last_send > HEARTBEAT * 1000))
             {
