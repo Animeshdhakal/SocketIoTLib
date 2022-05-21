@@ -4,30 +4,34 @@
 #include <LittleFS.h>
 
 #define FIRMWARE_VERSION "1.0"
-#define BLUEPRINT_ID "Animesh"
+#define BLUEPRINT_ID "t6-6CaBLXgM="
 #define DEBUG
 
 #include "SocketIoTEsp8266SSL.h"
 
-enum DState {
+enum DState
+{
     CONNECT_WIFI,
     CONNECT_SERVER,
     CONFIG_PORTAL,
     STATE_RUNNING
 };
 
-namespace DeviceState{
+namespace DeviceState
+{
     DState state;
-    DState get(){
+    DState get()
+    {
         return state;
     }
-    void set(DState stat){
+    void set(DState stat)
+    {
         state = stat;
     }
 };
 
-
-struct Store {
+struct Store
+{
     char ssid[32];
     char password[62];
     char host[30];
@@ -37,19 +41,24 @@ struct Store {
 
 Store store;
 
-void init_store(){
-    if(!LittleFS.begin()){
+void init_store()
+{
+    if (!LittleFS.begin())
+    {
         LOG1("LittleFS Failed");
         return;
     }
 
     File file = LittleFS.open("config", "r");
 
-    if(file){
-        file.read((uint8_t*)&store, sizeof(store));
+    if (file)
+    {
+        file.read((uint8_t *)&store, sizeof(store));
         LOG1("Store Found");
         DeviceState::set(CONNECT_WIFI);
-    }else{
+    }
+    else
+    {
         LOG1("Store Not Found");
         DeviceState::set(CONFIG_PORTAL);
     }
@@ -57,47 +66,53 @@ void init_store(){
     file.close();
 }
 
-void save_store(){
+void save_store()
+{
     File file = LittleFS.open("config", "w");
-    file.write((uint8_t*)&store, sizeof(store));
+    file.write((uint8_t *)&store, sizeof(store));
     file.close();
 }
 
-void reset_store(){
+void reset_store()
+{
     LittleFS.remove("config");
     LOG1("Store Cleared ! Opening Portal");
     DeviceState::set(CONFIG_PORTAL);
 }
 
-
 volatile uint32_t press_time = 0;
 
-ICACHE_RAM_ATTR
-void btn_press(){
-    if(!digitalRead(0)){
+IRAM_ATTR
+void btn_press()
+{
+    LOG1("Hold Down the Button for 6 Second to Erase the store");
+    if (!digitalRead(0))
+    {
         press_time = millis();
-    }else{
-        if(millis() - press_time >= 6000 ){
-            SocketIoT.disconnect();
+    }
+    else
+    {
+        if (millis() - press_time >= 6000)
+        {
             reset_store();
         }
         press_time = 0;
     }
 }
 
-
-void init_btn(){
+void init_btn()
+{
     pinMode(0, INPUT_PULLUP);
     attachInterrupt(0, btn_press, CHANGE);
 }
 
 template <typename T, int size>
-void StrCopy(String& str, T(&arr)[size]){
+void StrCopy(String &str, T (&arr)[size])
+{
     str.toCharArray(arr, size);
 }
 
-
-static const char* ROOTPAGE PROGMEM = R"html(
+static const char *ROOTPAGE PROGMEM = R"html(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -136,20 +151,27 @@ static const char* ROOTPAGE PROGMEM = R"html(
 </html>
 )html";
 
-
-void connect_wifi(){
+void connect_wifi()
+{
     LOG2("Connecting to ", store.ssid);
+
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+
     WiFi.mode(WIFI_STA);
+    delay(300);
 
     WiFi.begin(store.ssid, store.password);
 
     uint32_t timeout = millis() + 10000;
 
-    while(timeout > millis() && WiFi.status() != WL_CONNECTED){
+    while (timeout > millis() && WiFi.status() != WL_CONNECTED)
+    {
         delay(10);
     }
 
-    if(WiFi.status() == WL_CONNECTED){
+    if (WiFi.status() == WL_CONNECTED)
+    {
         LOG1("WiFi Connected");
         DeviceState::set(CONNECT_SERVER);
         return;
@@ -160,37 +182,38 @@ void connect_wifi(){
     DeviceState::set(CONFIG_PORTAL);
 }
 
-
-void getAPName(char* buff, size_t len){
+void getAPName(char *buff, size_t len)
+{
     snprintf(buff, len, "SocketIoT-%s", String(ESP.getChipId(), HEX).c_str());
 }
 
-void open_portal(){
+void open_portal()
+{
     ESP8266WebServer server(80);
     ESP8266HTTPUpdateServer updateServer;
-    
+
     WiFi.mode(WIFI_OFF);
     delay(100);
 
     WiFi.mode(WIFI_AP_STA);
-    
+
     char buff[60];
     getAPName(buff, sizeof(buff));
-    
+
     WiFi.softAP(buff);
     delay(300);
 
     LOG2("Opened AP: ", buff);
     LOG2("AP IP: ", WiFi.softAPIP().toString());
-    
-    server.on("/", [&](){
-        server.send(200, "text/html", ROOTPAGE);
-    });
 
-    server.on("/info", [&](){
+    server.on("/", [&]()
+              { server.send(200, "text/html", ROOTPAGE); });
+
+    server.on("/info", [&]()
+              {
         char buff[256];
         snprintf(buff, sizeof(buff),
-            R"json({"hardware": "%s", "bid:"%s", "fv":"%s", "ssid":"%s", "mac":"%s"})json",
+            R"json({"hardware": "%s", "bid":"%s", "fv":"%s", "ssid":"%s", "mac":"%s"})json",
             HARDWARE_NAME,
             BLUEPRINT_ID,
             FIRMWARE_VERSION, 
@@ -198,71 +221,90 @@ void open_portal(){
             WiFi.macAddress().c_str()
         );
 
-        server.send(200, "application/json", buff);
-    });
+        server.send(200, "application/json", buff); });
 
-    server.on("/wifiscan", [&](){
-        int n = WiFi.scanNetworks(false, true);
-        if(n > 0){
-            int indices[n];
-            for(int i = 0; i < n; i++){
-                indices[i] = i;
-            }
+    server.on("/wifiscan", [&]()
+              {
+                  int n = WiFi.scanNetworks(false, true);
+                  if (n > 0)
+                  {
+                      int indices[n];
+                      for (int i = 0; i < n; i++)
+                      {
+                          indices[i] = i;
+                      }
 
-            for(int i = 0; i < n; i++){
-                for(int j = i + 1; j < n; j++){
-                    if(WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])){
-                        std::swap(indices[i], indices[j]);
-                    }
-                }
-            }
+                      for (int i = 0; i < n; i++)
+                      {
+                          for (int j = i + 1; j < n; j++)
+                          {
+                              if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i]))
+                              {
+                                  std::swap(indices[i], indices[j]);
+                              }
+                          }
+                      }
 
-            server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-            server.send(200, "application/json", "[");
+                      server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+                      server.send(200, "application/json", "[");
 
-            char buff[256];
+                      char buff[256];
 
-            for(int i = 0; i < n; i++){
-                int id = indices[i];
+                      for (int i = 0; i < n; i++)
+                      {
+                          int id = indices[i];
 
-                const char* enc;
-                switch (WiFi.encryptionType(id)) {
-                    case ENC_TYPE_WEP:  enc = "WEP"; break;
-                    case ENC_TYPE_TKIP: enc = "WPA/PSK"; break;
-                    case ENC_TYPE_CCMP: enc = "WPA2/PSK"; break;
-                    case ENC_TYPE_AUTO: enc = "WPA/WPA2/PSK"; break;
-                    case ENC_TYPE_NONE: enc = "OPEN"; break;
-                    default:            enc = "unknown"; break;
-                }
+                          const char *enc;
+                          switch (WiFi.encryptionType(id))
+                          {
+                          case ENC_TYPE_WEP:
+                              enc = "WEP";
+                              break;
+                          case ENC_TYPE_TKIP:
+                              enc = "WPA/PSK";
+                              break;
+                          case ENC_TYPE_CCMP:
+                              enc = "WPA2/PSK";
+                              break;
+                          case ENC_TYPE_AUTO:
+                              enc = "WPA/WPA2/PSK";
+                              break;
+                          case ENC_TYPE_NONE:
+                              enc = "OPEN";
+                              break;
+                          default:
+                              enc = "unknown";
+                              break;
+                          }
 
-                snprintf(buff, sizeof(buff),
-                    R"json({"ssid":"%s", "bssid":"%s", "rssi":%i, "enc":"%s", "channel":%i, "hidden":%d})json",
-                    WiFi.SSID(id),
-                    WiFi.BSSIDstr(id).c_str(),
-                    WiFi.RSSI(id),
-                    enc,
-                    WiFi.channel(id),
-                    WiFi.isHidden(id)
-                );
-                server.sendContent(buff);
-                if(i != n - 1){
-                    server.sendContent(",");
-                }
-            }
-            server.sendContent("]");
-        }else{
-            server.send(200, "application/json", "[]");
-        }
+                          snprintf(buff, sizeof(buff),
+                                   R"json({"ssid":"%s", "bssid":"%s", "rssi":%i, "enc":"%s", "channel":%i, "hidden":%d})json",
+                                   WiFi.SSID(id),
+                                   WiFi.BSSIDstr(id).c_str(),
+                                   WiFi.RSSI(id),
+                                   enc,
+                                   WiFi.channel(id),
+                                   WiFi.isHidden(id));
+                          server.sendContent(buff);
+                          if (i != n - 1)
+                          {
+                              server.sendContent(",");
+                          }
+                      }
+                      server.sendContent("]");
+                  }
+                  else
+                  {
+                      server.send(200, "application/json", "[]");
+                  } });
 
-    });
-
-    server.on("/config", [&](){
+    server.on("/config", [&]()
+              {
         String ssid = server.arg("ssid");
         String password = server.arg("password");
         String host = server.arg("host");
         String port = server.arg("port");
-        String token = server.arg("token");
- 
+        String token = server.arg("token"); 
 
         if(ssid.length() && password.length() && host.length() && token.length() && port.length()){
             StrCopy(ssid, store.ssid);
@@ -282,82 +324,96 @@ void open_portal(){
 
         }else{
             server.send(200, "application/json", R"json({"error": true, "message":"Incomplete Fields"})json");
-        }
-    });
+        } });
 
     updateServer.setup(&server, "/update");
 
     server.begin();
 
-    while(DeviceState::state == CONFIG_PORTAL){
+    while (DeviceState::state == CONFIG_PORTAL)
+    {
         delay(10);
         server.handleClient();
     }
 
-    server.stop();    
+    server.stop();
 }
 
-
-void connect_server(){
+void connect_server()
+{
     LOG1("Connecting to Server");
+
+    SocketIoT.disconnect();
 
     SocketIoT.init(store.token, store.host, store.port);
 
     time_millis_t timeout = MILLIS() + 6000;
 
-    while(timeout > millis() && !SocketIoT.connected() && !SocketIoT.authFailed()){
+    while (timeout > millis() && !SocketIoT.connected() && !SocketIoT.authFailed())
+    {
         delay(10);
         SocketIoT.loop();
     }
 
-    if(millis() > timeout){
+    if (millis() > timeout)
+    {
         LOG1("Server Connection Timeout");
         return;
     }
 
-    if(SocketIoT.authFailed()){
+    if (SocketIoT.authFailed())
+    {
         LOG1("Auth Failed! Opening Portal");
+        SocketIoT.disconnect();
         DeviceState::set(CONFIG_PORTAL);
-    }else{
+    }
+    else
+    {
         DeviceState::set(STATE_RUNNING);
     }
 }
 
-
-bool parseURL(String url, String& protocol, String& host, String& path, int& port){
+bool parseURL(String url, String &protocol, String &host, String &path, int &port)
+{
     int index = url.indexOf(":");
-    
-    if(index < 0){
+
+    if (index < 0)
+    {
         return false;
     }
-    
+
     protocol = url.substring(0, index);
     url.remove(0, index + 3);
 
     index = url.indexOf("/");
     host = url.substring(0, index);
-    
+
     url.remove(0, index);
     index = url.indexOf(":");
-    
-    if(protocol == "https"){
+
+    if (protocol == "https")
+    {
         port = 443;
-    }else{
+    }
+    else
+    {
         port = 80;
     }
 
-    if(url.length()){
+    if (url.length())
+    {
         path = url;
-    }else{
+    }
+    else
+    {
         path = "/";
     }
-    
 
-   return true;
+    return true;
 }
 
-
-void restartMCU(){
+void restartMCU()
+{
     ESP.restart();
     delay(1000);
     ESP.reset();
@@ -366,10 +422,12 @@ void restartMCU(){
     };
 }
 
-void start_ota(const char* url){
+void start_ota(const char *url)
+{
     String protocol, host, path;
     int port;
-    if(!parseURL(url, protocol, host, path, port)){
+    if (!parseURL(url, protocol, host, path, port))
+    {
         LOG1("OTA Failed : Invalid URL");
         return;
     }
@@ -383,34 +441,37 @@ void start_ota(const char* url){
 
     client.setTrustAnchors(&SocketIoTCert);
 
-    if(!client.connect(host, port)){
+    if (!client.connect(host, port))
+    {
         LOG1("OTA Client Connection Failed");
         return;
     }
 
-    client.print(String("GET ") + path + " HTTP/1.0\r\n"
-               + "Host: " + host + "\r\n"
-               + "Connection: keep-alive\r\n"
-               + "\r\n");
+    client.print(String("GET ") + path + " HTTP/1.0\r\n" + "Host: " + host + "\r\n" + "Connection: keep-alive\r\n" + "\r\n");
 
     uint32_t timeout = millis();
-    while(client.connected() && !client.available()){
-        if(millis() - timeout > 10000L){
+    while (client.connected() && !client.available())
+    {
+        if (millis() - timeout > 10000L)
+        {
             LOG1("Response Timeout");
         }
         delay(10);
     }
 
-
     int contentLength = 0;
-    while(client.available()){
+    while (client.available())
+    {
         String line = client.readStringUntil('\n');
         line.trim();
         line.toLowerCase();
 
-        if(line.startsWith("content-length")){
+        if (line.startsWith("content-length"))
+        {
             contentLength = line.substring(line.lastIndexOf(':') + 1).toInt();
-        }else if(line.length() == 0){
+        }
+        else if (line.length() == 0)
+        {
             break;
         }
         delay(10);
@@ -418,7 +479,8 @@ void start_ota(const char* url){
 
     LOG2("Content-Length: ", contentLength);
 
-    if(!Update.begin(contentLength)){
+    if (!Update.begin(contentLength))
+    {
         LOG1("Update Begin Failed");
         return;
     }
@@ -427,13 +489,16 @@ void start_ota(const char* url){
     int prevProgress = 0;
     uint8_t buff[256];
 
-    while(client.connected() && written < contentLength){
+    while (client.connected() && written < contentLength)
+    {
         delay(10);
         timeout = millis();
 
-        while(client.connected() && !client.available()){
+        while (client.connected() && !client.available())
+        {
             delay(1);
-            if(millis() - timeout > 10000L){
+            if (millis() - timeout > 10000L)
+            {
                 LOG1("Timeout");
                 return;
             }
@@ -441,13 +506,15 @@ void start_ota(const char* url){
 
         int rlen = client.read(buff, sizeof(buff));
 
-        if(rlen <= 0) continue;
+        if (rlen <= 0)
+            continue;
 
         Update.write(buff, rlen);
         written += rlen;
 
-        int progress = (written*100)/contentLength;
-        if(progress - prevProgress >= 10 || progress == 100){
+        int progress = (written * 100) / contentLength;
+        if (progress - prevProgress >= 10 || progress == 100)
+        {
             LOG3("Written ", progress, "%");
             prevProgress = progress;
         }
@@ -455,15 +522,18 @@ void start_ota(const char* url){
 
     client.stop();
 
-    if(written != contentLength){
+    if (written != contentLength)
+    {
         LOG1("OTA Writing Failed");
     }
 
-    if(!Update.end()){
+    if (!Update.end())
+    {
         LOG1("Update Not Ended");
     }
 
-    if(!Update.isFinished()){
+    if (!Update.isFinished())
+    {
         LOG1("Update Not Finished");
     }
 
@@ -472,34 +542,38 @@ void start_ota(const char* url){
     restartMCU();
 }
 
-SocketIoTConnected(){
+SocketIoTConnected()
+{
     SocketIoT.syncWithServer();
 }
 
-SocketIoTWrite(1){
+SocketIoTWrite(1)
+{
     digitalWrite(LED_BUILTIN, data.toInt());
 }
 
-SocketIoTOTA(){
+SocketIoTOTA()
+{
     LOG2("Starting OTA, URL: ", url);
     start_ota(url);
 }
 
-void printDeviceInfo(){
-    LOG1();    
+void printDeviceInfo()
+{
+    LOG1();
     LOG1(SF("---------------------INFO---------------------"))
     LOG1(String("Firmware: ") + FIRMWARE_VERSION " (build " __DATE__ " " __TIME__ ")");
     LOG1(String("Device: ") + HARDWARE_NAME + "@" + ESP.getCpuFreqMHz() + "MHz");
     LOG1(String("MAC: ") + WiFi.macAddress());
-    LOG1(String("Flash: ") + ESP.getFlashChipRealSize()/1024 + "KB");
+    LOG1(String("Flash: ") + ESP.getFlashChipRealSize() / 1024 + "KB");
     String coreVersion = ESP.getCoreVersion();
     coreVersion.replace("-", ".");
-    LOG1(String("Core: ")  + coreVersion);
+    LOG1(String("Core: ") + coreVersion);
     LOG1(String("SDK: ") + ESP.getSdkVersion());
     LOG1(String("Boot Version: ") + ESP.getBootVersion());
     LOG1(String("Boot Mode: ") + ESP.getBootMode());
     LOG1(String("Firmware Info: ") + ESP.getSketchSize() + "/" + ESP.getFreeSketchSpace() + ", MD5:" + ESP.getSketchMD5());
-    LOG1(String("Free Memory: ") + ESP.getFreeHeap()/1024 + "KB");
+    LOG1(String("Free Memory: ") + ESP.getFreeHeap() / 1024 + "KB");
     LOG1(SF("---------------------INFO---------------------"))
 }
 
@@ -509,24 +583,24 @@ void setup()
     printDeviceInfo();
     init_btn();
     init_store();
-    pinMode(LED_BUILTIN, OUTPUT); 
+    pinMode(LED_BUILTIN, OUTPUT);
 }
-
 
 void loop()
 {
-   switch(DeviceState::state){
-        case CONNECT_WIFI:
-            connect_wifi();
-            break;
-        case CONFIG_PORTAL:
-            open_portal();
-            break;
-        case CONNECT_SERVER:
-            connect_server();
-            break;
-        case STATE_RUNNING:
-            SocketIoT.loop();
-            break;
-   }
+    switch (DeviceState::state)
+    {
+    case CONNECT_WIFI:
+        connect_wifi();
+        break;
+    case CONFIG_PORTAL:
+        open_portal();
+        break;
+    case CONNECT_SERVER:
+        connect_server();
+        break;
+    case STATE_RUNNING:
+        SocketIoT.loop();
+        break;
+    }
 }

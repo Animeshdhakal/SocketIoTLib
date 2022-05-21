@@ -2,3 +2,4 @@ build/esp8266
 build/makeEspArduino
 build/build
 .vscode
+Makefile

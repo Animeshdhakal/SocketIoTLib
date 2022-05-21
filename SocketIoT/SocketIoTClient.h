@@ -28,6 +28,7 @@ public:
 
     void init(const char *auth, const char *host, uint16_t port)
     {
+        this->state = CONNECTING;
         this->auth = auth;
         this->conn.begin(host, port);
         LOG4(SF("Connecting to "), host, ":", port);
@@ -35,15 +36,16 @@ public:
 
     void init(const char *auth)
     {
+        this->state = CONNECTING;
         this->auth = auth;
         this->conn.begin(DEFAULT_HOST, DEFAULT_PORT);
         LOG4(SF("Connecting to "), DEFAULT_HOST, ":", DEFAULT_PORT);
     }
 
-    void processWrite(SocketIoTData& data)
+    void processWrite(SocketIoTData &data)
     {
         const int pin = data.toInt();
-        
+
         if (++data >= data.end())
         {
             return;
@@ -59,18 +61,20 @@ public:
         }
     }
 
-    void processSys(SocketIoTData& data){
+    void processSys(SocketIoTData &data)
+    {
         uint32_t cmd;
         memcpy(&cmd, data.toStr(), sizeof(cmd));
 
-        if(++data >= data.end()) return;
+        if (++data >= data.end())
+            return;
 
-        switch(cmd){
-            case OTA_CMD:
-                socketIoTOTA(data.toStr());  
-                break;              
+        switch (cmd)
+        {
+        case OTA_CMD:
+            socketIoTOTA(data.toStr());
+            break;
         }
-
     }
 
     template <typename T>
@@ -92,9 +96,10 @@ public:
             hdr.msg_type = ntohs(hdr.msg_type);
             hdr.msg_len = ntohs(hdr.msg_len);
 
-            if(hdr.msg_len > MAX_READ_BYTES){
+            if (hdr.msg_len > MAX_READ_BYTES)
+            {
                 LOG1("Msg Bigger than Max Read Bytes");
-                return;            
+                return;
             }
 
             char buff[hdr.msg_len + 1];
@@ -136,16 +141,14 @@ public:
 
     void sendInfo()
     {
-        static const char info[] SPROGMEM = "info\0" 
-            InfoParam("hbeat", NumToString(HEARTBEAT)) 
-            InfoParam("build", __DATE__ " " __TIME__) 
-            InfoParam("fv", FIRMWARE_VERSION) 
-            InfoParam("bid", BLUEPRINT_ID) 
-            InfoParam("board", HARDWARE_NAME) 
-            InfoParam("bid", BLUEPRINT_ID) 
-            InfoParam("fv", FIRMWARE_VERSION) 
-            InfoParam("lv", SOCKETIOT_VERSION)        
-        "\0";
+        static const char info[] SPROGMEM = "info\0" InfoParam("hbeat", NumToString(HEARTBEAT))
+            InfoParam("build", __DATE__ " " __TIME__)
+                InfoParam("fv", FIRMWARE_VERSION)
+                    InfoParam("bid", BLUEPRINT_ID)
+                        InfoParam("board", HARDWARE_NAME)
+                            InfoParam("bid", BLUEPRINT_ID)
+                                InfoParam("fv", FIRMWARE_VERSION)
+                                    InfoParam("lv", SOCKETIOT_VERSION) "\0";
 
         size_t actualsize = sizeof(info) - 5 - 2;
         sendMsg(INFO, info + 5, actualsize);
@@ -173,7 +176,8 @@ public:
         return state == CONNECTED;
     }
 
-    void disconnect(){
+    void disconnect()
+    {
         state = DISCONNECTED;
         this->conn.disconnect();
     }
@@ -188,7 +192,8 @@ public:
         sendMsg(SYNC);
     }
 
-    void reconnectLogic(){
+    void reconnectLogic()
+    {
         state = CONNECTING;
         socketIoTDisconnected();
         conn.disconnect();
@@ -198,7 +203,8 @@ public:
     {
         YIELD();
 
-        if(state == DISCONNECTED){
+        if (state == DISCONNECTED)
+        {
             return;
         }
 
@@ -216,9 +222,10 @@ public:
         {
             time_millis_t now = MILLIS();
 
-            if(!isServerConnected){
-               reconnectLogic();
-               return;
+            if (!isServerConnected)
+            {
+                reconnectLogic();
+                return;
             }
 
             if (now - last_recv > HEARTBEAT * 1000 * 2)
